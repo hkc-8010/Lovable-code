@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { hashPassword } from '@/lib/auth';
 
 const TeamRegistration = () => {
   const navigate = useNavigate();
@@ -57,12 +58,15 @@ const TeamRegistration = () => {
         throw new Error('Team number already exists');
       }
 
+      // Hash the password before storing
+      const hashedPassword = await hashPassword(formData.password);
+
       // Create team
       const { data: team, error: teamError } = await supabase
         .from('teams')
         .insert([{
           team_number: parseInt(formData.teamNumber),
-          password_hash: formData.password, // In real app, hash this
+          password_hash: hashedPassword,
           status: 'pending'
         }])
         .select()
