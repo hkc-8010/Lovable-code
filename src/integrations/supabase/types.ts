@@ -14,7 +14,265 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_users: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      game_settings: {
+        Row: {
+          current_round: number
+          id: string
+          is_game_active: boolean
+          total_rounds: number
+          updated_at: string
+        }
+        Insert: {
+          current_round?: number
+          id?: string
+          is_game_active?: boolean
+          total_rounds?: number
+          updated_at?: string
+        }
+        Update: {
+          current_round?: number
+          id?: string
+          is_game_active?: boolean
+          total_rounds?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      players: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone_number: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone_number: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone_number?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio: {
+        Row: {
+          avg_buy_price: number
+          id: string
+          quantity: number
+          stock_id: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          avg_buy_price?: number
+          id?: string
+          quantity?: number
+          stock_id: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          avg_buy_price?: number
+          id?: string
+          quantity?: number
+          stock_id?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolio_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_prices: {
+        Row: {
+          created_at: string
+          id: string
+          price: number
+          round_number: number
+          stock_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price: number
+          round_number: number
+          stock_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number
+          round_number?: number
+          stock_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_prices_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stocks: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          symbol: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          symbol: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          symbol?: string
+        }
+        Relationships: []
+      }
+      teams: {
+        Row: {
+          cash_balance: number
+          created_at: string
+          id: string
+          password_hash: string
+          status: string
+          team_number: number
+          updated_at: string
+        }
+        Insert: {
+          cash_balance?: number
+          created_at?: string
+          id?: string
+          password_hash: string
+          status?: string
+          team_number: number
+          updated_at?: string
+        }
+        Update: {
+          cash_balance?: number
+          created_at?: string
+          id?: string
+          password_hash?: string
+          status?: string
+          team_number?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          brokerage: number
+          created_at: string
+          id: string
+          price: number
+          quantity: number
+          round_number: number
+          stock_id: string
+          team_id: string
+          total_amount: number
+          trade_type: string
+        }
+        Insert: {
+          brokerage: number
+          created_at?: string
+          id?: string
+          price: number
+          quantity: number
+          round_number: number
+          stock_id: string
+          team_id: string
+          total_amount: number
+          trade_type: string
+        }
+        Update: {
+          brokerage?: number
+          created_at?: string
+          id?: string
+          price?: number
+          quantity?: number
+          round_number?: number
+          stock_id?: string
+          team_id?: string
+          total_amount?: number
+          trade_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trades_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trades_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
