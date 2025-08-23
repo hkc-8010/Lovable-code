@@ -1,10 +1,11 @@
-# Stock Market Trading Game
+# SM Game V2 - Stock Market Trading Game
 
 A team-based stock market trading competition built with React, TypeScript, and Supabase.
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/6691239d-82cf-4487-b872-135a13f118a4
+**Repository**: Sm-game-v2  
+**Lovable URL**: https://lovable.dev/projects/6691239d-82cf-4487-b872-135a13f118a4
 
 ## How can I edit this code?
 
@@ -232,9 +233,47 @@ This project is built with:
 - **Security**: bcrypt password hashing
 - **Development**: Docker, Supabase CLI
 
-## How can I deploy this project?
+## 🚀 Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/6691239d-82cf-4487-b872-135a13f118a4) and click on Share -> Publish.
+### Vercel Deployment (Recommended)
+
+This project is optimized for Vercel deployment:
+
+#### **Method 1: GitHub Integration (Recommended)**
+1. **Push to GitHub**:
+   ```bash
+   git add .
+   git commit -m "Ready for deployment"
+   git push origin main
+   ```
+
+2. **Deploy with Vercel**:
+   - Go to [vercel.com](https://vercel.com)
+   - Sign up with your GitHub account
+   - Click "New Project"
+   - Import your `Sm-game-v2` repository
+   - Vercel will automatically detect it's a Vite project
+   - Click "Deploy"
+
+3. **Your app will be live** at `https://sm-game-v2.vercel.app`
+
+#### **Method 2: Vercel CLI**
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy
+vercel --prod
+```
+
+### Environment Variables
+Make sure to add your Supabase credentials in Vercel dashboard:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+### Lovable Deployment
+
+Alternatively, open [Lovable](https://lovable.dev/projects/6691239d-82cf-4487-b872-135a13f118a4) and click on Share -> Publish.
 
 ## Can I connect a custom domain to my Lovable project?
 

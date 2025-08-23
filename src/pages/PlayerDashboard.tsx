@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, BarChart3, RefreshCw } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -64,19 +64,60 @@ const PlayerDashboard = () => {
     const teamData = JSON.parse(currentTeam);
     setTeam(teamData);
     loadGameData(teamData.id);
+
+    // Set up real-time subscription for game settings changes
+    const gameSettingsSubscription = supabase
+      .channel('game_settings_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'game_settings'
+        },
+        (payload) => {
+          console.log('Game settings updated via real-time:', payload);
+          // Reload game data when settings change
+          loadGameData(teamData.id);
+          
+          // Show notification to user
+          toast({
+            title: "Game Updated",
+            description: `Round changed to ${payload.new.current_round}`,
+          });
+        }
+      )
+      .subscribe();
+
+    // Also set up polling as a fallback (every 10 seconds)
+    const pollInterval = setInterval(() => {
+      loadGameData(teamData.id);
+    }, 10000);
+
+    // Clean up subscription and polling on component unmount
+    return () => {
+      gameSettingsSubscription.unsubscribe();
+      clearInterval(pollInterval);
+    };
   }, [navigate]);
 
   const loadGameData = async (teamId: string) => {
     try {
       // Load game settings
-      const { data: settings } = await supabase
+      const { data: settings, error: settingsError } = await supabase
         .from('game_settings')
         .select('*')
         .single();
+      
+      if (settingsError) {
+        console.error('Error loading game settings:', settingsError);
+        return;
+      }
+      
       setGameSettings(settings);
 
       // Load stocks with current round prices
-      const { data: stockData } = await supabase
+      const { data: stockData, error: stockError } = await supabase
         .from('stocks')
         .select(`
           id,
@@ -87,32 +128,43 @@ const PlayerDashboard = () => {
         .eq('is_active', true)
         .eq('stock_prices.round_number', settings?.current_round || 1);
 
-      const formattedStocks = stockData?.map(stock => ({
-        id: stock.id,
-        symbol: stock.symbol,
-        name: stock.name,
-        current_price: stock.stock_prices[0]?.price || 0
-      })) || [];
-      setStocks(formattedStocks);
+      if (stockError) {
+        console.error('Error loading stocks:', stockError);
+      } else {
+        const formattedStocks = stockData?.map(stock => ({
+          id: stock.id,
+          symbol: stock.symbol,
+          name: stock.name,
+          current_price: stock.stock_prices[0]?.price || 0
+        })) || [];
+        setStocks(formattedStocks);
+      }
 
       // Load portfolio
-      const { data: portfolioData } = await supabase
+      const { data: portfolioData, error: portfolioError } = await supabase
         .from('portfolio')
         .select(`
           *,
           stocks(symbol, name)
         `)
         .eq('team_id', teamId);
-      setPortfolio(portfolioData || []);
+      
+      if (portfolioError) {
+        console.error('Error loading portfolio:', portfolioError);
+      } else {
+        setPortfolio(portfolioData || []);
+      }
 
       // Update team balance
-      const { data: teamData } = await supabase
+      const { data: teamData, error: teamError } = await supabase
         .from('teams')
         .select('cash_balance')
         .eq('id', teamId)
         .single();
       
-      if (teamData) {
+      if (teamError) {
+        console.error('Error loading team data:', teamError);
+      } else if (teamData) {
         setTeam(prev => prev ? { ...prev, cash_balance: teamData.cash_balance } : null);
       }
     } catch (error) {
@@ -233,7 +285,17 @@ const PlayerDashboard = () => {
             <h1 className="text-3xl font-bold text-primary">Team {team.team_number} Dashboard</h1>
             <p className="text-muted-foreground">Round {gameSettings.current_round} of {gameSettings.total_rounds}</p>
           </div>
-          <Button onClick={handleLogout} variant="outline">Logout</Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => loadGameData(team.id)} 
+              variant="outline" 
+              size="sm"
+              title="Refresh data"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button onClick={handleLogout} variant="outline">Logout</Button>
+          </div>
         </div>
 
         {/* Balance Cards */}

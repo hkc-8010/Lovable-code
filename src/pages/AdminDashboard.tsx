@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Check, X, Plus, Edit } from 'lucide-react';
+import { Check, X, Plus, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -73,19 +73,26 @@ const AdminDashboard = () => {
         .order('team_number');
       setTeams(teamsData || []);
 
-      // Load stocks
+      // Load stocks (both active and inactive for admin view)
       const { data: stocksData } = await supabase
         .from('stocks')
         .select('*')
+        .order('is_active', { ascending: false })
         .order('symbol');
       setStocks(stocksData || []);
 
       // Load game settings
-      const { data: settings } = await supabase
+      const { data: settings, error: settingsError } = await supabase
         .from('game_settings')
         .select('*')
         .single();
-      setGameSettings(settings);
+      
+      if (settingsError) {
+        console.error('Error loading game settings:', settingsError);
+      } else {
+        console.log('Loaded game settings:', settings); // Debug log
+        setGameSettings(settings);
+      }
 
       // Load leaderboard
       const { data: portfolioData } = await supabase
@@ -217,6 +224,85 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleToggleStockStatus = async (stockId: string, symbol: string, currentStatus: boolean) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('stocks')
+        .update({ is_active: !currentStatus })
+        .eq('id', stockId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Stock Status Updated",
+        description: `${symbol} has been ${!currentStatus ? 'activated' : 'deactivated'}`,
+      });
+
+      loadAdminData();
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteStock = async (stockId: string, symbol: string) => {
+    // Confirm deletion
+    if (!confirm(`Are you sure you want to delete ${symbol}? This will also remove all associated price data and trades.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Check if stock has any trades
+      const { data: trades } = await supabase
+        .from('trades')
+        .select('id')
+        .eq('stock_id', stockId)
+        .limit(1);
+
+      if (trades && trades.length > 0) {
+        throw new Error(`Cannot delete ${symbol} as it has existing trades. Consider deactivating instead.`);
+      }
+
+      // Delete stock prices first (due to foreign key constraint)
+      const { error: pricesError } = await supabase
+        .from('stock_prices')
+        .delete()
+        .eq('stock_id', stockId);
+
+      if (pricesError) throw pricesError;
+
+      // Delete the stock
+      const { error: stockError } = await supabase
+        .from('stocks')
+        .delete()
+        .eq('id', stockId);
+
+      if (stockError) throw stockError;
+
+      toast({
+        title: "Stock Deleted",
+        description: `${symbol} has been removed successfully`,
+      });
+
+      loadAdminData();
+    } catch (error: any) {
+      toast({
+        title: "Delete Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdateStockPrices = async () => {
     setLoading(true);
     try {
@@ -265,10 +351,17 @@ const AdminDashboard = () => {
   const handleRoundChange = async (newRound: number) => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      console.log('Updating round from', gameSettings?.current_round, 'to', newRound);
+      console.log('Game settings ID:', gameSettings?.id);
+      
+      // Update the game settings - use a more reliable approach
+      const { data, error } = await supabase
         .from('game_settings')
         .update({ current_round: newRound })
-        .eq('current_round', gameSettings?.current_round);
+        .eq('id', gameSettings?.id)
+        .select();
+
+      console.log('Update result:', { data, error });
 
       if (error) throw error;
 
@@ -277,8 +370,10 @@ const AdminDashboard = () => {
         description: `Game is now in Round ${newRound}`,
       });
 
-      loadAdminData();
+      // Reload admin data to reflect changes
+      await loadAdminData();
     } catch (error: any) {
+      console.error('Round update error:', error);
       toast({
         title: "Update Failed",
         description: error.message,
@@ -464,6 +559,7 @@ const AdminDashboard = () => {
                         <TableHead>Symbol</TableHead>
                         <TableHead>Company Name</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -475,6 +571,32 @@ const AdminDashboard = () => {
                             <Badge variant={stock.is_active ? 'default' : 'secondary'}>
                               {stock.is_active ? 'Active' : 'Inactive'}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleToggleStockStatus(stock.id, stock.symbol, stock.is_active)}
+                                disabled={loading}
+                                title={`${stock.is_active ? 'Deactivate' : 'Activate'} ${stock.symbol}`}
+                              >
+                                {stock.is_active ? (
+                                  <ToggleRight className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <ToggleLeft className="h-4 w-4 text-gray-400" />
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDeleteStock(stock.id, stock.symbol)}
+                                disabled={loading}
+                                title={`Delete ${stock.symbol}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
