@@ -65,9 +65,9 @@ const PlayerDashboard = () => {
     setTeam(teamData);
     loadGameData(teamData.id);
 
-    // Set up real-time subscription for game settings changes
+    // Set up real-time subscriptions for various data changes
     const gameSettingsSubscription = supabase
-      .channel('game_settings_changes')
+      .channel('player_game_settings')
       .on(
         'postgres_changes',
         {
@@ -76,11 +76,9 @@ const PlayerDashboard = () => {
           table: 'game_settings'
         },
         (payload) => {
-          console.log('Game settings updated via real-time:', payload);
-          // Reload game data when settings change
+          console.log('Player: Game settings updated via real-time:', payload);
           loadGameData(teamData.id);
           
-          // Show notification to user
           toast({
             title: "Game Updated",
             description: `Round changed to ${payload.new.current_round}`,
@@ -89,14 +87,81 @@ const PlayerDashboard = () => {
       )
       .subscribe();
 
-    // Also set up polling as a fallback (every 10 seconds)
+    const stocksSubscription = supabase
+      .channel('player_stocks')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'stocks'
+        },
+        (payload) => {
+          console.log('Player: Stocks updated via real-time:', payload);
+          loadGameData(teamData.id);
+          
+          toast({
+            title: "Stocks Updated",
+            description: "Stock information has been updated",
+          });
+        }
+      )
+      .subscribe();
+
+    const stockPricesSubscription = supabase
+      .channel('player_stock_prices')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'stock_prices'
+        },
+        (payload) => {
+          console.log('Player: Stock prices updated via real-time:', payload);
+          loadGameData(teamData.id);
+          
+          toast({
+            title: "Prices Updated",
+            description: "Stock prices have been updated",
+          });
+        }
+      )
+      .subscribe();
+
+    const portfolioSubscription = supabase
+      .channel('player_portfolio')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'portfolio',
+          filter: `team_id=eq.${teamData.id}`
+        },
+        (payload) => {
+          console.log('Player: Portfolio updated via real-time:', payload);
+          loadGameData(teamData.id);
+          
+          toast({
+            title: "Portfolio Updated",
+            description: "Your portfolio has been updated",
+          });
+        }
+      )
+      .subscribe();
+
+    // Fallback polling every 15 seconds (reduced frequency since we have real-time)
     const pollInterval = setInterval(() => {
       loadGameData(teamData.id);
-    }, 10000);
+    }, 15000);
 
-    // Clean up subscription and polling on component unmount
+    // Clean up subscriptions and polling on component unmount
     return () => {
       gameSettingsSubscription.unsubscribe();
+      stocksSubscription.unsubscribe();
+      stockPricesSubscription.unsubscribe();
+      portfolioSubscription.unsubscribe();
       clearInterval(pollInterval);
     };
   }, [navigate]);

@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Check, X, Plus, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Check, X, Plus, Edit, Trash2, ToggleLeft, ToggleRight, RefreshCw } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -44,6 +44,7 @@ const AdminDashboard = () => {
   const [gameSettings, setGameSettings] = useState<GameSettings | null>(null);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Stock management
   const [newStock, setNewStock] = useState({ symbol: '', name: '' });
@@ -59,6 +60,65 @@ const AdminDashboard = () => {
     }
 
     loadAdminData();
+
+    // Set up real-time subscriptions for auto-refresh
+    const gameSettingsSubscription = supabase
+      .channel('admin_game_settings')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'game_settings' },
+        (payload) => {
+          console.log('Admin: Game settings updated:', payload);
+          setGameSettings(payload.new as GameSettings);
+          toast({
+            title: "Game Settings Updated",
+            description: "Dashboard refreshed with latest changes",
+          });
+        }
+      )
+      .subscribe();
+
+    const teamsSubscription = supabase
+      .channel('admin_teams')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'teams' },
+        (payload) => {
+          console.log('Admin: Teams updated:', payload);
+          loadAdminData(); // Reload all data for team changes
+          toast({
+            title: "Teams Updated",
+            description: "Team data refreshed",
+          });
+        }
+      )
+      .subscribe();
+
+    const stocksSubscription = supabase
+      .channel('admin_stocks')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'stocks' },
+        (payload) => {
+          console.log('Admin: Stocks updated:', payload);
+          loadAdminData(); // Reload all data for stock changes
+          toast({
+            title: "Stocks Updated",
+            description: "Stock data refreshed",
+          });
+        }
+      )
+      .subscribe();
+
+    // Fallback polling every 30 seconds
+    const pollInterval = setInterval(() => {
+      loadAdminData();
+    }, 30000);
+
+    // Cleanup subscriptions
+    return () => {
+      gameSettingsSubscription.unsubscribe();
+      teamsSubscription.unsubscribe();
+      stocksSubscription.unsubscribe();
+      clearInterval(pollInterval);
+    };
   }, [navigate]);
 
   const loadAdminData = async () => {
@@ -384,6 +444,84 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadAdminData();
+      toast({
+        title: "Dashboard Refreshed",
+        description: "All data has been updated",
+      });
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh dashboard data",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleTeamDelete = async (teamId: string, teamNumber: number) => {
+    if (!confirm(`Are you sure you want to delete Team #${teamNumber}? This action cannot be undone and will also delete all associated trades and portfolio data.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Delete associated portfolio entries first
+      const { error: portfolioError } = await supabase
+        .from('portfolio')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (portfolioError) throw portfolioError;
+
+      // Delete associated trades
+      const { error: tradesError } = await supabase
+        .from('trades')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (tradesError) throw tradesError;
+
+      // Delete associated players
+      const { error: playersError } = await supabase
+        .from('players')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (playersError) throw playersError;
+
+      // Finally delete the team
+      const { error: teamError } = await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamId);
+
+      if (teamError) throw teamError;
+
+      toast({
+        title: "Team Deleted",
+        description: `Team #${teamNumber} has been successfully deleted`,
+      });
+
+      // Refresh data
+      loadAdminData();
+    } catch (error: any) {
+      console.error('Error deleting team:', error);
+      toast({
+        title: "Delete Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('currentAdmin');
     navigate('/');
@@ -402,7 +540,18 @@ const AdminDashboard = () => {
             <h1 className="text-3xl font-bold text-primary">Admin Dashboard</h1>
             <p className="text-muted-foreground">Stock Market Trading Game Control Panel</p>
           </div>
-          <Button onClick={handleLogout} variant="outline">Logout</Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleManualRefresh} 
+              variant="outline"
+              disabled={refreshing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            <Button onClick={handleLogout} variant="outline">Logout</Button>
+          </div>
         </div>
 
         {/* Game Control */}
@@ -484,26 +633,37 @@ const AdminDashboard = () => {
                         </TableCell>
                         <TableCell>₹{team.cash_balance.toLocaleString()}</TableCell>
                         <TableCell>
-                          {team.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleTeamStatusChange(team.id, 'approved')}
-                                disabled={loading}
-                                className="bg-success hover:bg-success/90"
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleTeamStatusChange(team.id, 'rejected')}
-                                disabled={loading}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
+                          <div className="flex gap-2">
+                            {team.status === 'pending' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleTeamStatusChange(team.id, 'approved')}
+                                  disabled={loading}
+                                  className="bg-success hover:bg-success/90"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleTeamStatusChange(team.id, 'rejected')}
+                                  disabled={loading}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleTeamDelete(team.id, team.team_number)}
+                              disabled={loading}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
