@@ -351,14 +351,22 @@ const PlayerDashboard = () => {
                 <Button
                   variant={tradeType === 'buy' ? 'default' : 'outline'}
                   onClick={() => setTradeType('buy')}
-                  className="flex-1 bg-buy hover:bg-buy/90 text-buy-foreground"
+                  className={`flex-1 ${
+                    tradeType === 'buy' 
+                      ? 'bg-green-600 hover:bg-green-700 text-white' 
+                      : 'border-green-600 text-green-600 hover:bg-green-50'
+                  }`}
                 >
                   Buy
                 </Button>
                 <Button
                   variant={tradeType === 'sell' ? 'default' : 'outline'}
                   onClick={() => setTradeType('sell')}
-                  className="flex-1 bg-destructive hover:bg-destructive/90"
+                  className={`flex-1 ${
+                    tradeType === 'sell' 
+                      ? 'bg-red-600 hover:bg-red-700 text-white' 
+                      : 'border-red-600 text-red-600 hover:bg-red-50'
+                  }`}
                   disabled={gameSettings.current_round < 4}
                 >
                   Sell
@@ -419,7 +427,12 @@ const PlayerDashboard = () => {
               <Button 
                 onClick={handleTrade} 
                 disabled={loading || !selectedStock || !quantity}
-                className="w-full"
+                variant={tradeType === 'sell' ? 'destructive' : 'default'}
+                className={`w-full ${
+                  tradeType === 'buy' 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }`}
               >
                 {loading ? 'Processing...' : `Confirm ${tradeType === 'buy' ? 'Buy' : 'Sell'}`}
               </Button>
