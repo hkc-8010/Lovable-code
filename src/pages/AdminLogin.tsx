@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { verifyPassword } from '@/lib/auth';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -20,14 +21,21 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
+      // Get admin user from database
       const { data: admin, error } = await supabase
         .from('admin_users')
         .select('*')
         .eq('username', formData.username)
-        .eq('password_hash', formData.password) // In real app, compare hashed passwords
         .single();
 
       if (error || !admin) {
+        throw new Error('Invalid username or password');
+      }
+
+      // Verify password using bcrypt
+      const isPasswordValid = await verifyPassword(formData.password, admin.password_hash);
+      
+      if (!isPasswordValid) {
         throw new Error('Invalid username or password');
       }
 

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { verifyPassword } from '@/lib/auth';
 
 const TeamLogin = () => {
   const navigate = useNavigate();
@@ -24,10 +25,16 @@ const TeamLogin = () => {
         .from('teams')
         .select('*')
         .eq('team_number', parseInt(formData.teamNumber))
-        .eq('password_hash', formData.password) // In real app, compare hashed passwords
         .single();
 
       if (error || !team) {
+        throw new Error('Invalid team number or password');
+      }
+
+      // Verify password using bcrypt
+      const isPasswordValid = await verifyPassword(formData.password, team.password_hash);
+      
+      if (!isPasswordValid) {
         throw new Error('Invalid team number or password');
       }
 
