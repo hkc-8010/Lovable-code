@@ -483,9 +483,15 @@ const PlayerDashboard = () => {
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold">
-                    <span>Total Amount:</span>
-                    <span>₹{(parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 1.01).toLocaleString()}</span>
-                  </div>
+  <span>Total Amount:</span>
+  <span>
+    ₹
+    {tradeType === 'buy'
+      ? (parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 1.01).toLocaleString()
+      : (parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 0.99).toLocaleString()
+    }
+  </span>
+</div>
                 </div>
               )}
 
