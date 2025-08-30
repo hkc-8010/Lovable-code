@@ -516,7 +516,12 @@ const PlayerDashboard = () => {
               ) : (
                 <div className="space-y-4">
                   {portfolio.map(item => {
-                    const currentStock = stocks.find(s => s.id === item.stock_id);
+{[...portfolio]
+  .sort((a, b) => a.stocks.name.localeCompare(b.stocks.name))
+  .map(item => {
+    // rendering logic...
+  })}
+                  const currentStock = stocks.find(s => s.id === item.stock_id);
                     const pl = calculateProfitLoss(item);
                     
                     return (
