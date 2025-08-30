@@ -343,6 +343,11 @@ const PlayerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background p-4">
+      <img 
+      src="/Banner.jpeg" 
+      alt="KVO Banner"
+      className="mx-auto mb-6 w-full max-w-2xl rounded-lg shadow-lg"
+    />
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
