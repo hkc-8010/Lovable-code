@@ -651,9 +651,13 @@ const PlayerDashboard = () => {
                 <p className="text-muted-foreground text-center py-8">No stocks in portfolio</p>
               ) : (
                 <div className="space-y-4">
-                  {portfolio.map(item => {
-                  const currentStock = stocks.find(s => s.id === item.stock_id);
+                  {portfolio
+                    .sort((a, b) => a.stocks.name.localeCompare(b.stocks.name))
+                    .map(item => {
+                    const currentStock = stocks.find(s => s.id === item.stock_id);
                     const pl = calculateProfitLoss(item);
+                    const investedValue = item.quantity * item.avg_buy_price; // Already includes brokerage
+                    const currentValue = item.quantity * (currentStock?.current_price || 0);
                     
                     return (
                       <div key={item.id} className="p-4 border rounded-lg">
@@ -667,7 +671,7 @@ const PlayerDashboard = () => {
                           </Badge>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-3 gap-4 text-sm">
                           <div>
                             <p className="text-muted-foreground">Quantity</p>
                             <p className="font-medium">{item.quantity}</p>
@@ -679,6 +683,14 @@ const PlayerDashboard = () => {
                           <div>
                             <p className="text-muted-foreground">Current Price</p>
                             <p className="font-medium">₹{currentStock?.current_price || 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Invested Value</p>
+                            <p className="font-medium">₹{investedValue.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Current Value</p>
+                            <p className="font-medium">₹{currentValue.toLocaleString()}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">P&L %</p>
