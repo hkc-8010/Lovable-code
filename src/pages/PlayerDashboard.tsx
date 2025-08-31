@@ -427,8 +427,11 @@ const PlayerDashboard = () => {
     if (!currentStock) return { amount: 0, percentage: 0 };
     
     const currentValue = portfolioItem.quantity * currentStock.current_price;
-    // Include brokerage in invested value calculation (avg_buy_price doesn't include brokerage)
-    const investedValue = (portfolioItem.quantity * portfolioItem.avg_buy_price) * 1.01;
+    // Include brokerage in invested value calculation
+    // Formula: Invested Value = (Price × Quantity) + 1% Brokerage
+    const grossInvestedValue = portfolioItem.quantity * portfolioItem.avg_buy_price;
+    const brokerageAmount = grossInvestedValue * 0.01;
+    const investedValue = grossInvestedValue + brokerageAmount;
     const profitLoss = currentValue - investedValue;
     const percentage = ((profitLoss / investedValue) * 100);
     
@@ -657,9 +660,11 @@ const PlayerDashboard = () => {
                     .map(item => {
                     const currentStock = stocks.find(s => s.id === item.stock_id);
                     const pl = calculateProfitLoss(item);
-                    // Calculate invested value including brokerage (avg_buy_price doesn't include brokerage)
+                    // Calculate invested value including brokerage
+                    // Formula: Invested Value = (Price × Quantity) + 1% Brokerage
                     const grossInvestedValue = item.quantity * item.avg_buy_price;
-                    const investedValue = grossInvestedValue * 1.01; // Add 1% brokerage fee
+                    const brokerageAmount = grossInvestedValue * 0.01;
+                    const investedValue = grossInvestedValue + brokerageAmount;
                     const currentValue = item.quantity * (currentStock?.current_price || 0);
                     
                     return (
