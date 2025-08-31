@@ -395,6 +395,11 @@ const PlayerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background p-4">
+      <img 
+      src="/Banner.jpeg" 
+      alt="KVO Banner"
+      className="mx-auto mb-6 w-full max-w-2xl rounded-lg shadow-lg"
+    />
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -535,9 +540,15 @@ const PlayerDashboard = () => {
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold">
-                    <span>Total Amount:</span>
-                    <span>₹{(parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 1.01).toLocaleString()}</span>
-                  </div>
+  <span>Total Amount:</span>
+  <span>
+    ₹
+    {tradeType === 'buy'
+      ? (parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 1.01).toLocaleString()
+      : (parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 0.99).toLocaleString()
+    }
+  </span>
+</div>
                 </div>
               )}
 
@@ -568,7 +579,7 @@ const PlayerDashboard = () => {
               ) : (
                 <div className="space-y-4">
                   {portfolio.map(item => {
-                    const currentStock = stocks.find(s => s.id === item.stock_id);
+                  const currentStock = stocks.find(s => s.id === item.stock_id);
                     const pl = calculateProfitLoss(item);
                     
                     return (
