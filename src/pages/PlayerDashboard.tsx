@@ -715,6 +715,62 @@ const PlayerDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Advertisement and Credits Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* QR Code Advertisement */}
+          <Card>
+            <CardContent className="flex justify-center p-6">
+              <img 
+                src="/QR.jpeg" 
+                alt="Advertisement QR Code" 
+                className="w-full h-auto rounded-lg shadow-md"
+                style={{ maxHeight: '400px', minHeight: '300px' }}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Developer Credits */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center">Game Credits</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold mb-3">Designed & Developed by</h3>
+                <div className="space-y-2">
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="font-medium">Rishit Dedhia</p>
+                    <a 
+                      href="https://www.linkedin.com/in/rishitdedhia/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm underline"
+                    >
+                      LinkedIn Profile
+                    </a>
+                  </div>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="font-medium">Hem Chheda</p>
+                    <a 
+                      href="https://www.linkedin.com/in/hemkumar-chheda-06b04598/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm underline"
+                    >
+                      LinkedIn Profile
+                    </a>
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    © 2025 Stock Market Trading Game. All rights reserved.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
