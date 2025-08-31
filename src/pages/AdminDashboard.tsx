@@ -35,6 +35,11 @@ interface GameSettings {
   current_round: number;
   total_rounds: number;
   is_game_active: boolean;
+  initial_team_balance?: number;
+  max_stocks?: number;
+  brokerage_percentage?: number;
+  trading_allowed?: boolean;
+  closing_bell_round?: number;
 }
 
 const AdminDashboard = () => {
@@ -50,6 +55,13 @@ const AdminDashboard = () => {
   const [newStock, setNewStock] = useState({ symbol: '', name: '' });
   const [selectedRound, setSelectedRound] = useState('1');
   const [stockPrices, setStockPrices] = useState<{ [key: string]: string }>({});
+  
+  // Game configuration
+  const [configSettings, setConfigSettings] = useState({
+    initial_team_balance: 5000000,
+    max_stocks: 25,
+    brokerage_percentage: 1.0
+  });
 
   useEffect(() => {
     // Check if admin is logged in
@@ -152,6 +164,15 @@ const AdminDashboard = () => {
       } else {
         console.log('Loaded game settings:', settings); // Debug log
         setGameSettings(settings);
+        
+        // Update config settings state
+        if (settings) {
+          setConfigSettings({
+            initial_team_balance: settings.initial_team_balance || 5000000,
+            max_stocks: settings.max_stocks || 25,
+            brokerage_percentage: (settings.brokerage_percentage || 0.01) * 100 // Convert to percentage for UI
+          });
+        }
       }
 
       // Load leaderboard
@@ -414,10 +435,17 @@ const AdminDashboard = () => {
       console.log('Updating round from', gameSettings?.current_round, 'to', newRound);
       console.log('Game settings ID:', gameSettings?.id);
       
-      // Update the game settings - use a more reliable approach
+      // Determine if trading should be allowed in the new round
+      const isClosingBell = newRound === (gameSettings?.closing_bell_round || 9);
+      const tradingAllowed = !isClosingBell;
+      
+      // Update the game settings with round and trading status
       const { data, error } = await supabase
         .from('game_settings')
-        .update({ current_round: newRound })
+        .update({ 
+          current_round: newRound,
+          trading_allowed: tradingAllowed
+        })
         .eq('id', gameSettings?.id)
         .select();
 
@@ -425,9 +453,13 @@ const AdminDashboard = () => {
 
       if (error) throw error;
 
+      const roundDescription = isClosingBell 
+        ? `🔔 Closing Bell - Round ${newRound} (Trading Disabled)`
+        : `Game is now in Round ${newRound}`;
+
       toast({
         title: "Round Updated",
-        description: `Game is now in Round ${newRound}`,
+        description: roundDescription,
       });
 
       // Reload admin data to reflect changes
@@ -522,6 +554,68 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleConfigUpdate = async () => {
+    if (!gameSettings?.id) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('game_settings')
+        .update({
+          initial_team_balance: configSettings.initial_team_balance,
+          max_stocks: configSettings.max_stocks,
+          brokerage_percentage: configSettings.brokerage_percentage / 100 // Convert back to decimal
+        })
+        .eq('id', gameSettings.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Configuration Updated",
+        description: "Game settings have been successfully updated",
+      });
+
+      loadAdminData();
+    } catch (error: any) {
+      console.error('Error updating configuration:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleStock = async (stockId: string, currentStatus: boolean) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('stocks')
+        .update({ is_active: !currentStatus })
+        .eq('id', stockId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Stock Updated",
+        description: `Stock has been ${!currentStatus ? 'activated' : 'deactivated'}`,
+      });
+
+      loadAdminData();
+    } catch (error: any) {
+      console.error('Error updating stock:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('currentAdmin');
     navigate('/');
@@ -570,25 +664,39 @@ const AdminDashboard = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: gameSettings.total_rounds }, (_, i) => i + 1).map(round => (
-                    <SelectItem key={round} value={round.toString()}>
-                      {round}
-                    </SelectItem>
-                  ))}
+                  {Array.from({ length: gameSettings.total_rounds }, (_, i) => i + 1).map(round => {
+                    const isClosingBell = round === (gameSettings.closing_bell_round || 9);
+                    return (
+                      <SelectItem key={round} value={round.toString()}>
+                        {isClosingBell ? `🔔 Round ${round} (Closing Bell)` : `Round ${round}`}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
             <Badge variant={gameSettings.is_game_active ? 'default' : 'secondary'}>
               {gameSettings.is_game_active ? 'Active' : 'Inactive'}
             </Badge>
+            {gameSettings.current_round === (gameSettings.closing_bell_round || 9) && (
+              <Badge variant="destructive" className="bg-red-600">
+                🔔 Closing Bell - Trading Disabled
+              </Badge>
+            )}
+            {gameSettings.trading_allowed === false && gameSettings.current_round !== (gameSettings.closing_bell_round || 9) && (
+              <Badge variant="outline" className="border-orange-500 text-orange-600">
+                Trading Disabled
+              </Badge>
+            )}
           </CardContent>
         </Card>
 
         <Tabs defaultValue="teams" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="teams">Team Management</TabsTrigger>
             <TabsTrigger value="stocks">Stock Management</TabsTrigger>
             <TabsTrigger value="prices">Price Management</TabsTrigger>
+            <TabsTrigger value="config">Game Config</TabsTrigger>
             <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
           </TabsList>
 
@@ -767,6 +875,86 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
 
+          {/* Game Configuration */}
+          <TabsContent value="config">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Game Configuration</CardTitle>
+                  <CardDescription>Configure game settings and parameters</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="initial_balance">Initial Team Balance (₹)</Label>
+                      <Input
+                        id="initial_balance"
+                        type="number"
+                        value={configSettings.initial_team_balance}
+                        onChange={(e) => setConfigSettings({
+                          ...configSettings,
+                          initial_team_balance: parseInt(e.target.value) || 0
+                        })}
+                        placeholder="5000000"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Current: ₹{configSettings.initial_team_balance.toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="max_stocks">Maximum Stocks</Label>
+                      <Input
+                        id="max_stocks"
+                        type="number"
+                        value={configSettings.max_stocks}
+                        onChange={(e) => setConfigSettings({
+                          ...configSettings,
+                          max_stocks: parseInt(e.target.value) || 0
+                        })}
+                        placeholder="25"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Current active stocks: {stocks.filter(s => s.is_active).length}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="brokerage">Brokerage Percentage (%)</Label>
+                      <Input
+                        id="brokerage"
+                        type="number"
+                        step="0.1"
+                        value={configSettings.brokerage_percentage}
+                        onChange={(e) => setConfigSettings({
+                          ...configSettings,
+                          brokerage_percentage: parseFloat(e.target.value) || 0
+                        })}
+                        placeholder="1.0"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Current: {configSettings.brokerage_percentage}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button onClick={handleConfigUpdate} disabled={loading}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Update Configuration
+                  </Button>
+                  
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> To add, remove, or manage individual stocks, please use the 
+                      <strong> "Stock Management"</strong> tab. The "Maximum Stocks" setting here only controls 
+                      the upper limit for the total number of stocks in the game.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
           {/* Price Management */}
           <TabsContent value="prices">
             <Card>
@@ -782,11 +970,14 @@ const AdminDashboard = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: gameSettings.total_rounds }, (_, i) => i + 1).map(round => (
-                        <SelectItem key={round} value={round.toString()}>
-                          {round}
-                        </SelectItem>
-                      ))}
+                      {Array.from({ length: gameSettings.total_rounds }, (_, i) => i + 1).map(round => {
+                        const isClosingBell = round === (gameSettings.closing_bell_round || 9);
+                        return (
+                          <SelectItem key={round} value={round.toString()}>
+                            {isClosingBell ? `🔔 Round ${round} (Closing Bell)` : `Round ${round}`}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>

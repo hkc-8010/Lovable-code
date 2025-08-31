@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, RefreshCw } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -40,6 +40,8 @@ interface GameSettings {
   current_round: number;
   total_rounds: number;
   is_game_active: boolean;
+  trading_allowed: boolean;
+  closing_bell_round: number;
 }
 
 const PlayerDashboard = () => {
@@ -62,10 +64,62 @@ const PlayerDashboard = () => {
     }
 
     const teamData = JSON.parse(currentTeam);
-    setTeam(teamData);
-    loadGameData(teamData.id);
+    
+    // Validate that the team still exists in the database
+    validateTeamExists(teamData);
+  }, [navigate]);
 
-    // Set up real-time subscriptions for various data changes
+  const validateTeamExists = async (teamData: Team) => {
+    try {
+      const { data: team, error } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('id', teamData.id)
+        .single();
+
+      if (error || !team) {
+        // Team no longer exists or has been deleted
+        localStorage.removeItem('currentTeam');
+        toast({
+          title: "Session Invalid",
+          description: "Your team has been removed. Please contact the administrator.",
+          variant: "destructive",
+        });
+        navigate('/team-login');
+        return;
+      }
+
+      if (team.status !== 'approved') {
+        // Team status changed
+        localStorage.removeItem('currentTeam');
+        toast({
+          title: "Access Denied",
+          description: `Team status: ${team.status}. Please contact the administrator.`,
+          variant: "destructive",
+        });
+        navigate('/team-login');
+        return;
+      }
+
+      // Team is valid, proceed with loading
+      setTeam(team);
+      loadGameData(team.id);
+      
+      // Set up real-time subscriptions for various data changes
+      setupRealtimeSubscriptions(team);
+    } catch (error) {
+      console.error('Error validating team:', error);
+      localStorage.removeItem('currentTeam');
+      toast({
+        title: "Session Error",
+        description: "Unable to validate your session. Please login again.",
+        variant: "destructive",
+      });
+      navigate('/team-login');
+    }
+  };
+
+  const setupRealtimeSubscriptions = (teamData: Team) => {
     const gameSettingsSubscription = supabase
       .channel('player_game_settings')
       .on(
@@ -151,6 +205,37 @@ const PlayerDashboard = () => {
       )
       .subscribe();
 
+    // Listen for team deletions to automatically log out deleted teams
+    const teamDeletionSubscription = supabase
+      .channel('player_team_deletion')
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'teams',
+          filter: `id=eq.${teamData.id}`
+        },
+        (payload) => {
+          console.log('Player: Team deleted via real-time:', payload);
+          
+          // Clear session and redirect to login
+          localStorage.removeItem('currentTeam');
+          
+          toast({
+            title: "Team Deleted",
+            description: "Your team has been deleted by the administrator. You will be redirected to the login page.",
+            variant: "destructive",
+          });
+          
+          // Redirect after a short delay to allow user to read the message
+          setTimeout(() => {
+            navigate('/team-login');
+          }, 3000);
+        }
+      )
+      .subscribe();
+
     // Fallback polling every 15 seconds (reduced frequency since we have real-time)
     const pollInterval = setInterval(() => {
       loadGameData(teamData.id);
@@ -162,9 +247,10 @@ const PlayerDashboard = () => {
       stocksSubscription.unsubscribe();
       stockPricesSubscription.unsubscribe();
       portfolioSubscription.unsubscribe();
+      teamDeletionSubscription.unsubscribe();
       clearInterval(pollInterval);
     };
-  }, [navigate]);
+  };
 
   const loadGameData = async (teamId: string) => {
     try {
@@ -220,7 +306,7 @@ const PlayerDashboard = () => {
         setPortfolio(portfolioData || []);
       }
 
-      // Update team balance
+      // Update team balance and check if team still exists
       const { data: teamData, error: teamError } = await supabase
         .from('teams')
         .select('cash_balance')
@@ -229,6 +315,21 @@ const PlayerDashboard = () => {
       
       if (teamError) {
         console.error('Error loading team data:', teamError);
+        
+        // If team not found (PGRST116), it means team was deleted
+        if (teamError.code === 'PGRST116') {
+          console.log('Team no longer exists, logging out...');
+          localStorage.removeItem('currentTeam');
+          
+          toast({
+            title: "Team Deleted",
+            description: "Your team has been deleted by the administrator.",
+            variant: "destructive",
+          });
+          
+          navigate('/team-login');
+          return;
+        }
       } else if (teamData) {
         setTeam(prev => prev ? { ...prev, cash_balance: teamData.cash_balance } : null);
       }
@@ -259,6 +360,10 @@ const PlayerDashboard = () => {
       const totalAmount = grossAmount + brokerage;
 
       // Check trading rules
+      if (!gameSettings.trading_allowed || gameSettings.current_round === gameSettings.closing_bell_round) {
+        throw new Error('🔔 Trading is disabled during the Closing Bell round');
+      }
+      
       if (tradeType === 'sell' && gameSettings.current_round < 4) {
         throw new Error('Selling is not allowed in rounds 1-3');
       }
@@ -353,7 +458,14 @@ const PlayerDashboard = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-primary">Team {team.team_number} Dashboard</h1>
-            <p className="text-muted-foreground">Round {gameSettings.current_round} of {gameSettings.total_rounds}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground">Round {gameSettings.current_round} of {gameSettings.total_rounds}</p>
+              {gameSettings.current_round === gameSettings.closing_bell_round && (
+                <Badge variant="destructive" className="bg-red-600">
+                  🔔 Closing Bell
+                </Badge>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button 
@@ -373,7 +485,7 @@ const PlayerDashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Cash Balance</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <Wallet className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">₹{team.cash_balance.toLocaleString()}</div>
@@ -415,12 +527,18 @@ const PlayerDashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle>Trade Stocks</CardTitle>
+              {gameSettings.current_round === gameSettings.closing_bell_round && (
+                <CardDescription className="text-red-600 font-semibold">
+                  🔔 Trading is disabled during the Closing Bell round. Final prices have been set.
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <Button
                   variant={tradeType === 'buy' ? 'default' : 'outline'}
                   onClick={() => setTradeType('buy')}
+                  disabled={gameSettings.current_round === gameSettings.closing_bell_round}
                   className={`flex-1 ${
                     tradeType === 'buy' 
                       ? 'bg-green-600 hover:bg-green-700 text-white' 
@@ -437,7 +555,7 @@ const PlayerDashboard = () => {
                       ? 'bg-red-600 hover:bg-red-700 text-white' 
                       : 'border-red-600 text-red-600 hover:bg-red-50'
                   }`}
-                  disabled={gameSettings.current_round < 4}
+                  disabled={gameSettings.current_round < 4 || gameSettings.current_round === gameSettings.closing_bell_round}
                 >
                   Sell
                 </Button>
@@ -451,9 +569,13 @@ const PlayerDashboard = () => {
 
               <div className="space-y-2">
                 <Label>Select Stock</Label>
-                <Select value={selectedStock} onValueChange={setSelectedStock}>
+                <Select 
+                  value={selectedStock} 
+                  onValueChange={setSelectedStock}
+                  disabled={gameSettings.current_round === gameSettings.closing_bell_round}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a stock" />
+                    <SelectValue placeholder={gameSettings.current_round === gameSettings.closing_bell_round ? "Trading Disabled" : "Choose a stock"} />
                   </SelectTrigger>
                   <SelectContent>
                     {stocks.map(stock => (
@@ -471,38 +593,41 @@ const PlayerDashboard = () => {
                   type="number"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="Enter quantity"
+                  placeholder={gameSettings.current_round === gameSettings.closing_bell_round ? "Trading Disabled" : "Enter quantity"}
                   min="1"
+                  disabled={gameSettings.current_round === gameSettings.closing_bell_round}
                 />
               </div>
 
               {selectedStock && quantity && (
                 <div className="p-4 bg-muted rounded-lg space-y-2">
                   <div className="flex justify-between">
-                    <span>Gross Amount:</span>
+                    <span>{tradeType === 'buy' ? 'Gross Cost:' : 'Gross Proceeds:'}</span>
                     <span>₹{(parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0)).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Brokerage (1%):</span>
-                    <span>₹{(parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 0.01).toLocaleString()}</span>
+                    <span>Brokerage Fee (1%):</span>
+                    <span className={tradeType === 'sell' ? 'text-red-600' : 'text-orange-600'}>
+                      {tradeType === 'buy' ? '+' : '-'}₹{(parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 0.01).toLocaleString()}
+                    </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold">
-  <span>Total Amount:</span>
-  <span>
-    ₹
-    {tradeType === 'buy'
-      ? (parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 1.01).toLocaleString()
-      : (parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 0.99).toLocaleString()
-    }
-  </span>
-</div>
+                    <span>{tradeType === 'buy' ? 'Total Cost:' : 'Net Proceeds:'}</span>
+                    <span className={tradeType === 'buy' ? 'text-green-600' : 'text-blue-600'}>
+                      ₹
+                      {tradeType === 'buy'
+                        ? (parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 1.01).toLocaleString()
+                        : (parseInt(quantity) * (stocks.find(s => s.id === selectedStock)?.current_price || 0) * 0.99).toLocaleString()
+                      }
+                    </span>
+                  </div>
                 </div>
               )}
 
               <Button 
                 onClick={handleTrade} 
-                disabled={loading || !selectedStock || !quantity}
+                disabled={loading || !selectedStock || !quantity || gameSettings.current_round === gameSettings.closing_bell_round}
                 variant={tradeType === 'sell' ? 'destructive' : 'default'}
                 className={`w-full ${
                   tradeType === 'buy' 

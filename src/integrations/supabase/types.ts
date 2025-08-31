@@ -35,28 +35,43 @@ export type Database = {
         }
         Relationships: []
       }
-      game_settings: {
-        Row: {
-          current_round: number
-          id: string
-          is_game_active: boolean
-          total_rounds: number
-          updated_at: string
-        }
-        Insert: {
-          current_round?: number
-          id?: string
-          is_game_active?: boolean
-          total_rounds?: number
-          updated_at?: string
-        }
-        Update: {
-          current_round?: number
-          id?: string
-          is_game_active?: boolean
-          total_rounds?: number
-          updated_at?: string
-        }
+              game_settings: {
+          Row: {
+            brokerage_percentage: number
+            closing_bell_round: number
+            current_round: number
+            id: string
+            initial_team_balance: number
+            is_game_active: boolean
+            max_stocks: number
+            total_rounds: number
+            trading_allowed: boolean
+            updated_at: string
+          }
+          Insert: {
+            brokerage_percentage?: number
+            closing_bell_round?: number
+            current_round?: number
+            id?: string
+            initial_team_balance?: number
+            is_game_active?: boolean
+            max_stocks?: number
+            total_rounds?: number
+            trading_allowed?: boolean
+            updated_at?: string
+          }
+          Update: {
+            brokerage_percentage?: number
+            closing_bell_round?: number
+            current_round?: number
+            id?: string
+            initial_team_balance?: number
+            is_game_active?: boolean
+            max_stocks?: number
+            total_rounds?: number
+            trading_allowed?: boolean
+            updated_at?: string
+          }
         Relationships: []
       }
       players: {

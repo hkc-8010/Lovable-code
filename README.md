@@ -128,8 +128,9 @@ The application will be available at: **http://localhost:8080** (or next availab
 
 #### Admin Dashboard
 - Team management (approve/reject registrations)
-- Stock management (20 stocks available)
+- Stock management (25+ stocks available, add/remove stocks)
 - Price management (set prices for 8 rounds)
+- Game configuration (initial balance, brokerage %, max stocks)
 - Game control (manage current round)
 - Leaderboard tracking
 
@@ -142,12 +143,12 @@ The application will be available at: **http://localhost:8080** (or next availab
 
 ### 🎮 Game Rules
 
-- **Starting Balance**: ₹20,00,000 per team
-- **Brokerage**: 1% on all trades
+- **Starting Balance**: ₹50,00,000 per team (configurable by admin)
+- **Brokerage**: 1% on all trades (configurable by admin)
 - **Trading Rounds**: 8 total rounds
 - **Selling Restriction**: Only allowed from Round 4 onwards
 - **Team Size**: 4 players per team
-- **Stocks Available**: 20 different stocks
+- **Stocks Available**: 25 different stocks (expandable by admin)
 
 ### 🛠️ Development Commands
 
