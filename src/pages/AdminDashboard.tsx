@@ -503,45 +503,28 @@ const AdminDashboard = () => {
 
     setLoading(true);
     try {
-      // Delete associated portfolio entries first
-      const { error: portfolioError } = await supabase
-        .from('portfolio')
-        .delete()
-        .eq('team_id', teamId);
-
-      if (portfolioError) throw portfolioError;
-
-      // Delete associated trades
-      const { error: tradesError } = await supabase
-        .from('trades')
-        .delete()
-        .eq('team_id', teamId);
-
-      if (tradesError) throw tradesError;
-
-      // Delete associated players
-      const { error: playersError } = await supabase
-        .from('players')
-        .delete()
-        .eq('team_id', teamId);
-
-      if (playersError) throw playersError;
-
-      // Finally delete the team
+      console.log(`Attempting to delete team ${teamNumber} with ID: ${teamId}`);
+      
+      // Delete the team - CASCADE DELETE will handle related records
       const { error: teamError } = await supabase
         .from('teams')
         .delete()
         .eq('id', teamId);
 
-      if (teamError) throw teamError;
+      if (teamError) {
+        console.error('Team deletion error:', teamError);
+        throw teamError;
+      }
+
+      console.log(`Team ${teamNumber} deleted successfully`);
 
       toast({
         title: "Team Deleted",
-        description: `Team #${teamNumber} has been successfully deleted`,
+        description: `Team #${teamNumber} has been successfully deleted. The team will be automatically logged out.`,
       });
 
       // Refresh data
-      loadAdminData();
+      await loadAdminData();
     } catch (error: any) {
       console.error('Error deleting team:', error);
       toast({
