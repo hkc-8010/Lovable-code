@@ -99,7 +99,7 @@ ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
 -- Create a sample team for testing with bcrypt hashed password
 INSERT INTO public.teams (team_number, password_hash, status, cash_balance) 
-VALUES (1001, '$2b$12$drQR9KTvlMTncq.cccKG2.PrZShcGmUqOTqYKfwoVakjCIoRQHSBC', 'approved', 2000000.00)
+VALUES (1001, '$2b$12$drQR9KTvlMTncq.cccKG2.PrZShcGmUqOTqYKfwoVakjCIoRQHSBC', 'approved', 5000000.00)
 ON CONFLICT (team_number) DO UPDATE SET 
   password_hash = EXCLUDED.password_hash,
   status = EXCLUDED.status,
