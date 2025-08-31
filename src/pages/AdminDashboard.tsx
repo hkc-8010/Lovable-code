@@ -82,9 +82,7 @@ const AdminDashboard = () => {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'teams' },
         (payload) => {
-          console.log('🔴 Real-time subscription triggered for teams:', payload);
-          console.log('🔴 Event type:', payload.eventType);
-          console.log('🔴 Will call loadAdminData from subscription...');
+          console.log('Admin: Teams updated:', payload);
           loadAdminData(); // Reload all data for team changes
           toast({
             title: "Teams Updated",
@@ -124,25 +122,16 @@ const AdminDashboard = () => {
   }, [navigate]);
 
   const loadAdminData = async () => {
-    console.log('🔄 loadAdminData called');
     try {
       // Load teams with players
-      const { data: teamsData, error: teamsError } = await supabase
+      const { data: teamsData } = await supabase
         .from('teams')
         .select(`
           *,
           players(name, phone_number)
         `)
         .order('team_number');
-      
-      console.log('📊 Teams loaded from database:', {
-        count: teamsData?.length || 0,
-        teams: teamsData?.map(t => ({ id: t.id, number: t.team_number })) || [],
-        error: teamsError
-      });
-      
       setTeams(teamsData || []);
-      console.log('✅ Teams state updated');
 
       // Load stocks (both active and inactive for admin view)
       const { data: stocksData } = await supabase
@@ -476,45 +465,56 @@ const AdminDashboard = () => {
   };
 
   const handleTeamDelete = async (teamId: string, teamNumber: number) => {
-    console.log(`Delete button clicked for team ${teamNumber} (ID: ${teamId})`);
-    
     if (!confirm(`Are you sure you want to delete Team #${teamNumber}? This action cannot be undone and will also delete all associated trades and portfolio data.`)) {
-      console.log('User cancelled deletion');
       return;
     }
 
-    console.log('User confirmed deletion, proceeding...');
     setLoading(true);
-    
     try {
-      console.log('Attempting to delete team from database...');
-      
-      // Delete the team - database CASCADE constraints will handle related data
-      const { data, error: teamError } = await supabase
+      // Delete associated portfolio entries first
+      const { error: portfolioError } = await supabase
+        .from('portfolio')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (portfolioError) throw portfolioError;
+
+      // Delete associated trades
+      const { error: tradesError } = await supabase
+        .from('trades')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (tradesError) throw tradesError;
+
+      // Delete associated players
+      const { error: playersError } = await supabase
+        .from('players')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (playersError) throw playersError;
+
+      // Finally delete the team
+      const { error: teamError } = await supabase
         .from('teams')
         .delete()
-        .eq('id', teamId)
-        .select();
-
-      console.log('Delete response:', { data, error: teamError });
+        .eq('id', teamId);
 
       if (teamError) throw teamError;
 
-      console.log('Team deleted successfully');
       toast({
         title: "Team Deleted",
-        description: `Team #${teamNumber} and all associated data have been successfully deleted`,
+        description: `Team #${teamNumber} has been successfully deleted`,
       });
 
       // Refresh data
-      console.log('Refreshing admin data...');
       loadAdminData();
     } catch (error: any) {
       console.error('Error deleting team:', error);
-      console.error('Full error details:', JSON.stringify(error, null, 2));
       toast({
         title: "Delete Failed",
-        description: `${error.message} (Check console for details)`,
+        description: error.message,
         variant: "destructive",
       });
     } finally {

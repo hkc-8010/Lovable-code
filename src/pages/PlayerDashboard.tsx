@@ -62,62 +62,10 @@ const PlayerDashboard = () => {
     }
 
     const teamData = JSON.parse(currentTeam);
-    
-    // Validate that the team still exists in the database
-    validateTeamExists(teamData);
-  }, []);
+    setTeam(teamData);
+    loadGameData(teamData.id);
 
-  const validateTeamExists = async (teamData: Team) => {
-    try {
-      const { data: team, error } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('id', teamData.id)
-        .single();
-
-      if (error || !team) {
-        // Team no longer exists or has been deleted
-        localStorage.removeItem('currentTeam');
-        toast({
-          title: "Session Invalid",
-          description: "Your team has been removed. Please contact the administrator.",
-          variant: "destructive",
-        });
-        navigate('/team-login');
-        return;
-      }
-
-      if (team.status !== 'approved') {
-        // Team status changed
-        localStorage.removeItem('currentTeam');
-        toast({
-          title: "Access Denied",
-          description: `Team status: ${team.status}. Please contact the administrator.`,
-          variant: "destructive",
-        });
-        navigate('/team-login');
-        return;
-      }
-
-      // Team is valid, proceed with loading
-      setTeam(team);
-      loadGameData(team.id);
-      
-      // Set up real-time subscriptions for various data changes
-      setupRealtimeSubscriptions(team);
-    } catch (error) {
-      console.error('Error validating team:', error);
-      localStorage.removeItem('currentTeam');
-      toast({
-        title: "Session Error",
-        description: "Unable to validate your session. Please login again.",
-        variant: "destructive",
-      });
-      navigate('/team-login');
-    }
-  };
-
-  const setupRealtimeSubscriptions = (teamData: Team) => {
+    // Set up real-time subscriptions for various data changes
     const gameSettingsSubscription = supabase
       .channel('player_game_settings')
       .on(
@@ -208,7 +156,7 @@ const PlayerDashboard = () => {
       loadGameData(teamData.id);
     }, 15000);
 
-    // Return cleanup function
+    // Clean up subscriptions and polling on component unmount
     return () => {
       gameSettingsSubscription.unsubscribe();
       stocksSubscription.unsubscribe();
@@ -216,7 +164,7 @@ const PlayerDashboard = () => {
       portfolioSubscription.unsubscribe();
       clearInterval(pollInterval);
     };
-  };
+  }, [navigate]);
 
   const loadGameData = async (teamId: string) => {
     try {
