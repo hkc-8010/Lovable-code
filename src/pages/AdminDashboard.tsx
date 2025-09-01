@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Check, X, Plus, Edit, Trash2, ToggleLeft, ToggleRight, RefreshCw } from 'lucide-react';
+import { hashPassword, generateSecurePassword } from '@/lib/auth';
+import { Check, X, Plus, Edit, Trash2, ToggleLeft, ToggleRight, RefreshCw, Key } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -496,6 +497,83 @@ const AdminDashboard = () => {
     }
   };
 
+  const handlePasswordReset = async (teamId: string, teamNumber: number) => {
+    // Generate a secure password as suggestion
+    const suggestedPassword = generateSecurePassword(8);
+    
+    const choice = confirm(
+      `Reset password for Team #${teamNumber}?\n\n` +
+      `Click OK to use auto-generated password: "${suggestedPassword}"\n` +
+      `Click Cancel to enter a custom password`
+    );
+    
+    let newPassword: string | null;
+    
+    if (choice) {
+      // Use auto-generated password
+      newPassword = suggestedPassword;
+    } else {
+      // Ask for custom password
+      newPassword = prompt(`Enter custom password for Team #${teamNumber}:`);
+      
+      if (!newPassword) {
+        return; // User cancelled
+      }
+
+      if (newPassword.length < 4) {
+        toast({
+          title: "Invalid Password",
+          description: "Password must be at least 4 characters long",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      console.log(`Resetting password for team ${teamNumber} with ID: ${teamId}`);
+      
+      // Hash the new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update the team's password
+      const { error } = await supabase
+        .from('teams')
+        .update({ password_hash: hashedPassword })
+        .eq('id', teamId);
+
+      if (error) {
+        console.error('Password reset error:', error);
+        throw error;
+      }
+
+      console.log(`Password reset successful for team ${teamNumber}`);
+
+      toast({
+        title: "Password Reset Successful",
+        description: `New password set for Team #${teamNumber}. Share this password: "${newPassword}"`,
+      });
+
+      // Also show an alert with the password for easy copying
+      alert(
+        `Password Reset Successful!\n\n` +
+        `Team #${teamNumber} new password: ${newPassword}\n\n` +
+        `Please share this password with the team members.`
+      );
+
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: "Password Reset Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleTeamDelete = async (teamId: string, teamNumber: number) => {
     if (!confirm(`Are you sure you want to delete Team #${teamNumber}? This action cannot be undone and will also delete all associated trades and portfolio data.`)) {
       return;
@@ -503,45 +581,28 @@ const AdminDashboard = () => {
 
     setLoading(true);
     try {
-      // Delete associated portfolio entries first
-      const { error: portfolioError } = await supabase
-        .from('portfolio')
-        .delete()
-        .eq('team_id', teamId);
-
-      if (portfolioError) throw portfolioError;
-
-      // Delete associated trades
-      const { error: tradesError } = await supabase
-        .from('trades')
-        .delete()
-        .eq('team_id', teamId);
-
-      if (tradesError) throw tradesError;
-
-      // Delete associated players
-      const { error: playersError } = await supabase
-        .from('players')
-        .delete()
-        .eq('team_id', teamId);
-
-      if (playersError) throw playersError;
-
-      // Finally delete the team
+      console.log(`Attempting to delete team ${teamNumber} with ID: ${teamId}`);
+      
+      // Delete the team - CASCADE DELETE will handle related records
       const { error: teamError } = await supabase
         .from('teams')
         .delete()
         .eq('id', teamId);
 
-      if (teamError) throw teamError;
+      if (teamError) {
+        console.error('Team deletion error:', teamError);
+        throw teamError;
+      }
+
+      console.log(`Team ${teamNumber} deleted successfully`);
 
       toast({
         title: "Team Deleted",
-        description: `Team #${teamNumber} has been successfully deleted`,
+        description: `Team #${teamNumber} has been successfully deleted. The team will be automatically logged out.`,
       });
 
       // Refresh data
-      loadAdminData();
+      await loadAdminData();
     } catch (error: any) {
       console.error('Error deleting team:', error);
       toast({
@@ -762,6 +823,16 @@ const AdminDashboard = () => {
                                 </Button>
                               </>
                             )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handlePasswordReset(team.id, team.team_number)}
+                              disabled={loading}
+                              className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                              title="Reset Password"
+                            >
+                              <Key className="h-4 w-4" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="destructive"
