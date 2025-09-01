@@ -17,9 +17,10 @@ const Index = () => {
             <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
               Stock Market Trading Game
             </h1>
+            <br /></>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Experience the thrill of stock trading in a team-based competition. 
-              8 rounds, 20 stocks, and ₹20,00,000 to start your journey!
+              <p></>8 rounds, 25 stocks, and ₹50,00,000 to start your journey!</p>
             </p>
           </div>
 
