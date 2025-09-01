@@ -120,10 +120,10 @@ const AdminDashboard = () => {
       )
       .subscribe();
 
-    // Fallback polling every 30 seconds
+    // Fallback polling every 90 seconds
     const pollInterval = setInterval(() => {
       loadAdminData();
-    }, 30000);
+    }, 90000);
 
     // Cleanup subscriptions
     return () => {
