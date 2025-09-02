@@ -582,12 +582,14 @@ const PlayerDashboard = () => {
                     <SelectValue placeholder={gameSettings.current_round === gameSettings.closing_bell_round ? "Trading Disabled" : "Choose a stock"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {stocks.map(stock => (
-                      <SelectItem key={stock.id} value={stock.id}>
-                        {stock.symbol} - {stock.name} (₹{stock.current_price})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+  {[...stocks]
+    .sort((a, b) => a.symbol.localeCompare(b.symbol)) // or use a.name.localeCompare(b.name)
+    .map(stock => (
+      <SelectItem key={stock.id} value={stock.id}>
+        {stock.symbol}
+      </SelectItem>
+    ))}
+</SelectContent>
                 </Select>
               </div>
 
