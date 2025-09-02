@@ -146,7 +146,7 @@ The application will be available at: **http://localhost:8080** (or next availab
 - **Starting Balance**: ₹50,00,000 per team (configurable by admin)
 - **Brokerage**: 1% on all trades (configurable by admin)
 - **Trading Rounds**: 8 total rounds
-- **Selling Restriction**: Only allowed from Round 4 onwards
+- **Selling Restriction**: Only allowed from Round 3 onwards
 - **Team Size**: 4 players per team
 - **Stocks Available**: 25 different stocks (expandable by admin)
 
