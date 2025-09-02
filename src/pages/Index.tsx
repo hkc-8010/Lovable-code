@@ -19,7 +19,7 @@ const Index = () => {
             </h1>
             <br /><br /><br />
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Experience the thrill of stock trading in a team-based competition. 
+              Experience the thrill of stock trading in a team-based competition. <br />
               8 rounds, 25 stocks, and ₹50,00,000 to start your journey!
             </p>
           </div>
