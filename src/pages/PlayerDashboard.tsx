@@ -583,7 +583,7 @@ const PlayerDashboard = () => {
                   </SelectTrigger>
                   <SelectContent>
   {[...stocks]
-    .sort((a, b) => a.symbol.localeCompare(b.symbol)) // or use a.name.localeCompare(b.name)
+    .sort((a, b) => a.symbol.localeCompare(b.symbol))
     .map(stock => (
       <SelectItem key={stock.id} value={stock.id}>
         {stock.symbol}
