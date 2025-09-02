@@ -364,8 +364,8 @@ const PlayerDashboard = () => {
         throw new Error('🔔 Trading is disabled during the Closing Bell round');
       }
       
-      if (tradeType === 'sell' && gameSettings.current_round < 4) {
-        throw new Error('Selling is not allowed in rounds 1-3');
+      if (tradeType === 'sell' && gameSettings.current_round < 3) {
+        throw new Error('Selling is not allowed in rounds 1-2');
       }
 
       if (tradeType === 'buy' && totalAmount > team.cash_balance) {
@@ -559,15 +559,15 @@ const PlayerDashboard = () => {
                       ? 'bg-red-600 hover:bg-red-700 text-white' 
                       : 'border-red-600 text-red-600 hover:bg-red-50'
                   }`}
-                  disabled={gameSettings.current_round < 4 || gameSettings.current_round === gameSettings.closing_bell_round}
+                  disabled={gameSettings.current_round < 3 || gameSettings.current_round === gameSettings.closing_bell_round}
                 >
                   Sell
                 </Button>
               </div>
 
-              {gameSettings.current_round < 4 && (
+              {gameSettings.current_round < 3 && (
                 <div className="text-sm text-muted-foreground bg-muted p-2 rounded">
-                  Selling is only allowed from Round 4 onwards
+                  Selling is only allowed from Round 3 onwards
                 </div>
               )}
 
