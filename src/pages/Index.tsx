@@ -110,8 +110,8 @@ const Index = () => {
               <ul className="space-y-2 text-muted-foreground">
                 <li>• Each team starts with ₹50,00,000</li>
                 <li>• 1% brokerage on all trades (buy & sell)</li>
-                <li>• Rounds 1-3: Only buying allowed</li>
-                <li>• Round 4-8: Both buying and selling allowed</li>
+                <li>• Rounds 1-2: Only buying allowed</li>
+                <li>• Round 3-8: Both buying and selling allowed</li>
                 <li>• Round 9: 🔔 Closing Bell - No trading, final prices set</li>
                 <li>• 25+ stocks available for trading</li>
               </ul>
