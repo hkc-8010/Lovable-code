@@ -360,8 +360,12 @@ const PlayerDashboard = () => {
       const totalAmount = grossAmount + brokerage;
 
       // Check trading rules
-      if (!gameSettings.trading_allowed || gameSettings.current_round === gameSettings.closing_bell_round) {
+      if (gameSettings.current_round === gameSettings.closing_bell_round) {
         throw new Error('🔔 Trading is disabled during the Closing Bell round');
+      }
+      
+      if (!gameSettings.trading_allowed) {
+        throw new Error('⏸️ Trading has been paused by the administrator');
       }
       
       if (tradeType === 'sell' && gameSettings.current_round < 3) {
@@ -467,6 +471,11 @@ const PlayerDashboard = () => {
                   🔔 Closing Bell
                 </Badge>
               )}
+              {!gameSettings.trading_allowed && gameSettings.current_round !== gameSettings.closing_bell_round && (
+                <Badge variant="outline" className="border-orange-500 text-orange-600">
+                  ⏸️ Trading Paused
+                </Badge>
+              )}
             </div>
           </div>
           <div className="flex gap-2">
@@ -534,13 +543,18 @@ const PlayerDashboard = () => {
                   🔔 Trading is disabled during the Closing Bell round. Final prices have been set.
                 </CardDescription>
               )}
+              {!gameSettings.trading_allowed && gameSettings.current_round !== gameSettings.closing_bell_round && (
+                <CardDescription className="text-orange-600 font-semibold">
+                  ⏸️ Trading has been paused by the administrator. Please wait for further instructions.
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <Button
                   variant={tradeType === 'buy' ? 'default' : 'outline'}
                   onClick={() => setTradeType('buy')}
-                  disabled={gameSettings.current_round === gameSettings.closing_bell_round}
+                  disabled={!gameSettings.trading_allowed || gameSettings.current_round === gameSettings.closing_bell_round}
                   className={`flex-1 ${
                     tradeType === 'buy' 
                       ? 'bg-green-600 hover:bg-green-700 text-white' 
@@ -557,7 +571,7 @@ const PlayerDashboard = () => {
                       ? 'bg-red-600 hover:bg-red-700 text-white' 
                       : 'border-red-600 text-red-600 hover:bg-red-50'
                   }`}
-                  disabled={gameSettings.current_round < 3 || gameSettings.current_round === gameSettings.closing_bell_round}
+                  disabled={!gameSettings.trading_allowed || gameSettings.current_round < 3 || gameSettings.current_round === gameSettings.closing_bell_round}
                 >
                   Sell
                 </Button>
@@ -574,10 +588,16 @@ const PlayerDashboard = () => {
                 <Select 
                   value={selectedStock} 
                   onValueChange={setSelectedStock}
-                  disabled={gameSettings.current_round === gameSettings.closing_bell_round}
+                  disabled={!gameSettings.trading_allowed || gameSettings.current_round === gameSettings.closing_bell_round}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={gameSettings.current_round === gameSettings.closing_bell_round ? "Trading Disabled" : "Choose a stock"} />
+                    <SelectValue placeholder={
+                      !gameSettings.trading_allowed 
+                        ? "Trading Paused" 
+                        : gameSettings.current_round === gameSettings.closing_bell_round 
+                          ? "Trading Disabled" 
+                          : "Choose a stock"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
                     {stocks
@@ -597,9 +617,15 @@ const PlayerDashboard = () => {
                   type="number"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  placeholder={gameSettings.current_round === gameSettings.closing_bell_round ? "Trading Disabled" : "Enter quantity"}
+                  placeholder={
+                    !gameSettings.trading_allowed 
+                      ? "Trading Paused" 
+                      : gameSettings.current_round === gameSettings.closing_bell_round 
+                        ? "Trading Disabled" 
+                        : "Enter quantity"
+                  }
                   min="1"
-                  disabled={gameSettings.current_round === gameSettings.closing_bell_round}
+                  disabled={!gameSettings.trading_allowed || gameSettings.current_round === gameSettings.closing_bell_round}
                 />
               </div>
 
@@ -631,7 +657,7 @@ const PlayerDashboard = () => {
 
               <Button 
                 onClick={handleTrade} 
-                disabled={loading || !selectedStock || !quantity || gameSettings.current_round === gameSettings.closing_bell_round}
+                disabled={loading || !selectedStock || !quantity || !gameSettings.trading_allowed || gameSettings.current_round === gameSettings.closing_bell_round}
                 variant={tradeType === 'sell' ? 'destructive' : 'default'}
                 className={`w-full ${
                   tradeType === 'buy' 
