@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Toggle } from '@/components/ui/toggle';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { hashPassword, generateSecurePassword } from '@/lib/auth';
-import { Check, X, Plus, Edit, Trash2, ToggleLeft, ToggleRight, RefreshCw, Key } from 'lucide-react';
+import { Check, X, Plus, Edit, Trash2, ToggleLeft, ToggleRight, RefreshCw, Key, Pause, Play } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -477,6 +478,50 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleTradingPause = async (shouldPause?: boolean) => {
+    setLoading(true);
+    try {
+      const isClosingBell = gameSettings?.current_round === (gameSettings?.closing_bell_round || 9);
+      
+      // Determine the new trading state
+      const newTradingAllowed = shouldPause !== undefined ? !shouldPause : !gameSettings?.trading_allowed;
+      
+      // Don't allow resuming if we're in closing bell round
+      if (newTradingAllowed && isClosingBell) {
+        toast({
+          title: "Cannot Resume Trading",
+          description: "Trading cannot be resumed during the Closing Bell round",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('game_settings')
+        .update({ 
+          trading_allowed: newTradingAllowed
+        })
+        .eq('id', gameSettings?.id);
+
+      if (error) throw error;
+
+      toast({
+        title: newTradingAllowed ? "Trading Resumed" : "Trading Paused",
+        description: newTradingAllowed 
+          ? "All teams can now trade stocks" 
+          : "All trading has been paused for all teams",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to Update Trading Status",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleManualRefresh = async () => {
     setRefreshing(true);
     try {
@@ -749,6 +794,33 @@ const AdminDashboard = () => {
                 Trading Disabled
               </Badge>
             )}
+            <div className="ml-auto flex items-center gap-3">
+              <Label className="text-sm font-medium">Trading:</Label>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${gameSettings.trading_allowed ? 'text-green-600' : 'text-red-600'}`}>
+                  {gameSettings.trading_allowed ? 'Active' : 'Paused'}
+                </span>
+                <Toggle
+                  pressed={!gameSettings.trading_allowed}
+                  onPressedChange={handleTradingPause}
+                  disabled={loading}
+                  variant="outline"
+                  size="sm"
+                  className={`${
+                    !gameSettings.trading_allowed 
+                      ? 'bg-red-100 border-red-300 text-red-700 data-[state=on]:bg-red-200' 
+                      : 'bg-green-100 border-green-300 text-green-700'
+                  }`}
+                  aria-label={gameSettings.trading_allowed ? "Pause trading" : "Resume trading"}
+                >
+                  {!gameSettings.trading_allowed ? (
+                    <Play className="h-4 w-4" />
+                  ) : (
+                    <Pause className="h-4 w-4" />
+                  )}
+                </Toggle>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
