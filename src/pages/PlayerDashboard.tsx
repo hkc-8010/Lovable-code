@@ -582,14 +582,14 @@ const PlayerDashboard = () => {
                     <SelectValue placeholder={gameSettings.current_round === gameSettings.closing_bell_round ? "Trading Disabled" : "Choose a stock"} />
                   </SelectTrigger>
                   <SelectContent>
-  {stocks.map(stock => (
-    <SelectItem key={stock.id} value={stock.id}>
-      {stock.symbol} {/* or stock.name if you use name */}
-    </SelectItem>
-  ))}
-</SelectContent>
-    ))}
-</SelectContent>
+                    {stocks.map(stock => (
+                      <SelectItem key={stock.id} value={stock.id}>
+                        {stock.symbol} {/* or stock.name if you use name */}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                      ))}
+                  </SelectContent>
                 </Select>
               </div>
 
