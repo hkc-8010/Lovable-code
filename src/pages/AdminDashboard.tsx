@@ -902,7 +902,9 @@ const AdminDashboard = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {stocks.map(stock => (
+                      {stocks
+                        .sort((a, b) => a.symbol.localeCompare(b.symbol))
+                        .map(stock => (
                         <TableRow key={stock.id}>
                           <TableCell className="font-medium">{stock.symbol}</TableCell>
                           <TableCell>{stock.name}</TableCell>
@@ -1054,7 +1056,9 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {stocks.map(stock => (
+                  {stocks
+                    .sort((a, b) => a.symbol.localeCompare(b.symbol))
+                    .map(stock => (
                     <div key={stock.id} className="space-y-2">
                       <Label>{stock.symbol} - {stock.name}</Label>
                       <Input
