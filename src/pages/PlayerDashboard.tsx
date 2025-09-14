@@ -764,7 +764,7 @@ const PlayerDashboard = () => {
                 <h3 className="text-lg font-semibold mb-3">Designed & Developed by</h3>
                 <div className="space-y-2">
                   <div className="p-3 bg-muted rounded-lg">
-                    <p className="font-medium">Rishit Dedhia</p>
+                    <p className="font-medium">Rishit</p>
                     <a 
                       href="https://www.linkedin.com/in/rishitdedhia/" 
                       target="_blank" 
@@ -775,7 +775,7 @@ const PlayerDashboard = () => {
                     </a>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
-                    <p className="font-medium">Hem Chheda</p>
+                    <p className="font-medium">Hem</p>
                     <a 
                       href="https://www.linkedin.com/in/hemkumar-chheda-06b04598/" 
                       target="_blank" 
